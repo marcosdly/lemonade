@@ -57,7 +57,7 @@ def stop():
     # Check if Lemonade Server is running
     running_pid, running_port = get_server_info()
     if running_port is None:
-        print(f"Lemonade Server is not running\n")
+        print("Lemonade Server is not running\n")
         return
 
     # Stop the server
@@ -214,10 +214,10 @@ def main():
     )
 
     # Status command
-    status_parser = subparsers.add_parser("status", help="Check if server is running")
+    _ = subparsers.add_parser("status", help="Check if server is running")
 
     # Stop command
-    stop_parser = subparsers.add_parser("stop", help="Stop the server")
+    _ = subparsers.add_parser("stop", help="Stop the server")
 
     # Pull command
     pull_parser = subparsers.add_parser(
@@ -249,7 +249,13 @@ def main():
         pull(args.model)
     elif args.command == "stop":
         stop()
-    elif args.command == "help" or not args.command:
+    elif args.command == "help":
+        parser.print_help()
+    elif not args.command:
+        print("Command not specified.")
+        parser.print_help()
+    else:
+        print(f"Unknown command {repr(args.command)}")
         parser.print_help()
 
 
