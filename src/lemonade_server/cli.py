@@ -141,29 +141,34 @@ def status(verbose: bool = True) -> Tuple[bool, int]:
         return True, port
 
 
-def is_lemonade_server(pid):
+SERVER_PROCESS_NAMES: tuple[str, ...] = (
+    (
+        "lemonade-server-dev.exe",
+        "lemonade-server.exe",
+        "lemonade.exe",
+    )
+    if sys.platform == "win32"
+    else (
+        # Linux/Unix-like
+        "lemonade-server-dev",
+        "lemonade-server",
+        "lemonade",
+    )
+)
+
+
+def is_lemonade_server(process):
     """
     Check wether or not a given PID corresponds to a Lemonade server
     """
     try:
-        process = psutil.Process(pid)
-        while True:
-            if process.name() in [  # Windows
-                "lemonade-server-dev.exe",
-                "lemonade-server.exe",
-                "lemonade.exe",
-            ] or process.name() in [  # Linux
-                "lemonade-server-dev",
-                "lemonade-server",
-                "lemonade",
-            ]:
+        while process:
+            if process.name() in SERVER_PROCESS_NAMES:
                 return True
-            if not process.parent():
-                return False
             process = process.parent()
+        return False
     except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
         return False
-    return False
 
 
 def get_server_info() -> Tuple[int | None, int | None]:
@@ -173,15 +178,15 @@ def get_server_info() -> Tuple[int | None, int | None]:
     2. The port that Lemonade Server is running on
     """
     # Go over all python processes that have a port open
-    for process in psutil.process_iter(["pid", "name"]):
+    connections: list[psutil.pconn] = []
+    for process in psutil.process_iter(("pid",)):
         try:
             connections = process.net_connections()
-            for conn in connections:
-                if conn.status == "LISTEN":
-                    if is_lemonade_server(process.info["pid"]):
-                        return process.info["pid"], conn.laddr.port
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
+        for conn in connections:
+            if conn.status == "LISTEN" and is_lemonade_server(process):
+                return process.info["pid"], conn.laddr.port
 
     return None, None
 
